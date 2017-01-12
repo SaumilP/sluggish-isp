@@ -1,0 +1,4 @@
+Selenium==3.0.2
+chromedriver==2.24.1
+Tweepy==3.5.0
+geckodriver==0.13.0

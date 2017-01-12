@@ -1,0 +1,21 @@
+{
+  "bandwidth" :{
+    "download" : "4",
+    "upload" : "2"
+  },
+  "twitter" :{
+    "twitter_token" : "",
+    "twitter_consumer_key" : "",
+    "twitter_token_secret" : "",
+    "twitter_consumer_secrete": ""
+  },
+  "margin": ".7",
+  "isp": "@axxess",
+  "log":{
+    "name": "sluggish-isp.log"
+  },
+  "driver": {
+    "type": "firefox",
+    "binary": "/usr/bin/firefox"
+  }
+}
