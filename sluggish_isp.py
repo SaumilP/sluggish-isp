@@ -4,6 +4,7 @@ import datetime
 import json
 import time
 import tweepy
+import re
 import os.path
 from enum import Enum
 from selenium import webdriver
@@ -25,7 +26,7 @@ class Driver(Enum):
 
 class Config(object):
 
-    with(CONFIG, "r") as f:
+    with open(CONFIG, "r") as f:
         config = json.load(f)
 
         # get speed related configurations
@@ -69,11 +70,14 @@ class Log(object):
 
 class SpeedTest(object):
 
-    def __init__(self, config:Config):
+    def __init__(self, config):
         self.download = ""
         self.upload = ""
         self.latency = ""
         self.jitter = ""
+        self.download_rate = ""
+        self.upload_rate = ""
+
         self.log = Log()
         self.config = config
         self.driver = None
@@ -106,7 +110,7 @@ class SpeedTest(object):
         self.driver.get(MLAB_URL)
         try:
             button = self.wait.until(EC.element_to_be_clickable(
-            (By.ID, "start-button")
+                (By.ID, "start-button")
             ))
             button.click()
         except TimeoutException:
@@ -117,12 +121,16 @@ class SpeedTest(object):
             return
 
         try:
-            self.upload = str(self.driver.find_element_by_id("upload-spped").text)
+            self.upload = str(self.driver.find_element_by_id("upload-speed").text)
+            self.upload_rate = str(self.driver.find_element_by_id("upload-speed-units").text)
+
             self.download = str(self.driver.find_element_by_id("download-speed").text)
+            self.download_rate = str(self.driver.find_element_by_id("download-speed-units").text)
+
             self.latency = self.driver.find_element_by_id("latency").text
             self.jitter = self.driver.find_element_by_id("jitter").text
         except TimeoutException:
-            self.log.write("Could not find spped test related values")
+            self.log.write("Could not find speed test related values")
 
     def __del__(self):
         if self.driver is not None:
@@ -138,8 +146,7 @@ class Twitter(object):
     def __init__(self):
         self.config = Config()
         self.log = Log()
-        auth = tweepy.OAuthHandler(self.config.twitter_consumer_key, \
-                                   self.config.twitter_consumer_secret)
+        auth = tweepy.OAuthHandler(self.config.twitter_consumer_key, self.config.twitter_consumer_secret)
         auth.set_access_token(self.config.twitter_token, self.config.twitter_token_secret)
 
         try:
@@ -152,59 +159,93 @@ class Twitter(object):
 
 class Output(object):
 
-    def __init__(self, config:Config, speedtest:SpeedTest, twitter:Twitter):
+    def __init__(self, config, speedtest, twitter):
         self.config = config
         self.log = Log()
         self.twitter = twitter
         self.speedtest = speedtest
-        self.config_download = self.config.download
-        self.config_upload = self.config.upload
         self.margin = self.config.margin
         self.isp = self.config.isp
+
+        # download configuration and speed-test data
+        self.config_download = self.config.download
         self.speedtest_download = self.speedtest.download
+        self.speedtest_download_rate = self.speedtest.download_rate
+
+        # upload configuration and speed-test data
+        self.config_upload = self.config.upload
         self.speedtest_upload = self.speedtest.upload
+        self.speedtest_upload_rate = self.speedtest.upload_rate
 
     def test_results(self):
-        # If driver creation failed, speedtest data would be empty
+        # If driver creation failed, speedtest data would be empty, identify cause behind this
         if self.speedtest_download == "" or self.speedtest_upload == "":
-            self.log.write("Speed test values invalid\n")
-            self.log.write("Down {} : Up {}\n".format(self.speedtest_download, self.speedtest_upload))
+            print("(err) Speed test values invalid\n")
+            self.log.write("(err) Speed test values invalid\n")
             return
 
-        downunder_download_rate = float(self.speedtest_download) < self.config_download * self.margin
-        downunder_upload_rate = float(self.speedtest_upload) < self.config_upload * self.margin
+        st_download = float(self.speedtest_download) if len(re.findall("[0-9]+", self.speedtest_download)) > 0 else 0
+        st_upload = float(self.speedtest_upload) if len(re.findall("[0-9]+", self.speedtest_upload)) > 0 else 0
+
+        download_in_mbps = convert_to_mbps(st_download, self.speedtest_download_rate)
+        upload_in_mbps = convert_to_mbps(st_upload, self.speedtest_upload_rate)
+
+        downunder_download_rate = download_in_mbps < ( self.config_download * self.margin )
+        downunder_upload_rate = upload_in_mbps < ( self.config_upload * self.margin )
+
+        self.speedtest_download = "{0:.2f}".format(download_in_mbps)
+        self.speedtest_upload = "{0:.2f}".format(upload_in_mbps)
+        print("(debug) Download:", self.speedtest_download,self.speedtest_download_rate,"Upload:",self.speedtest_upload,self.speedtest_upload_rate)
+
         if(downunder_download_rate or downunder_upload_rate):
+            print("(info) Going to tweet about it...")
             try:
-                # TODO confirm logic works before enabiling twitter functionality
-                # self.twitter.api.update_status()
-                self.log.write("-- " + self.config.date + " --\n"
-                               "- ERROR: Bandwidth not in spec - \n"
-                               "Download: " + self.speedtest_download + " Mbps \n"
-                               "Upload: " + self.speedtest_upload + " Mbps \n"
-                               "Latency: " + self.speedtest.latency + " msec round trip time \n"
-                               "Jitter: " + self.speedtest.jitter + " msec \n"
+                tweet_str = ("Hey " + self.isp + ", what gives! I pay for " +
+                           str(int(self.config_download)) + "/" +
+                           str(int(self.config_upload)) + " Mbps. Why am I only getting " +
+                           str(self.speedtest_download) + "/" +
+                           str(self.speedtest_upload) + " Mbps?")
+
+                print("(info) Tweet:", tweet_str, "(Size:", len(tweet_str), "chars )")
+                self.twitter.api.update_status(tweet_str)
+
+                self.log.write("-- " + self.config.date + " --\n" +
+                               "- ERROR: Bandwidth not in spec - \n" +
+                               "Download: " + self.speedtest_download + " Mbps \n" +
+                               "Upload: " + self.speedtest_upload + " Kbps \n" +
+                               "Latency: " + self.speedtest.latency + " msec round trip time \n" +
+                               "Jitter: " + self.speedtest.jitter + " msec \n" +
                                "-------------------- \n")
             except:
-                self.log.write("-- " + self.config.date + " --\n"
-                               "Twitter post / logging failed \n"
+                self.log.write("-- " + self.config.date + " --\n" +
+                               "Twitter post / logging failed \n" +
                                "-------------------- \n")
         else:
-            self.log.write("-- " + self.config.date + " --\n"
-                                  "- Bandwidth in spec - \n"
-                                  "Download: " + self.speedtest_download + " Mbps \n"
-                                  "Upload: " + self.speedtest_upload + " Mbps \n"
-                                  "Latency: " + self.speedtest.latency + " msec round trip time \n"
-                                  "Jitter: " + self.speedtest.jitter + "\n"
+            self.log.write("-- " + self.config.date + " --\n" +
+                                  "- Bandwidth in spec - \n" +
+                                  "Download: " + str(self.speedtest_download) + " Mbps \n" +
+                                  "Upload: " + str(self.speedtest_upload) + " Kbps \n" +
+                                  "Latency: " + str(self.speedtest.latency) + " msec round trip time \n" +
+                                  "Jitter: " + str(self.speedtest.jitter) + "\n" +
                                   "-------------------- \n")
 
 
+def convert_to_mbps(st_amt, st_rate):
+    if st_rate.lower() == "kb/s":
+        return float(st_amt)/1024
+    elif st_rate.lower() == "mb/s":
+        return float(st_amt)
+    else:
+        return 0
+
+
 if __name__ == "__main__":
-    config_data = Config()
-    _speedtest = SpeedTest(config_data)
+    _config_data = Config()
+    _speedtest = SpeedTest(_config_data)
     _speedtest.run_test()
     if _speedtest.valid_driver():
-        time.sleep(35)
+        time.sleep(60)
     _speedtest.store_test_value()
     _twitter = Twitter()
-    output = Output(config_data, _speedtest, _twitter)
+    output = Output(_config_data, _speedtest, _twitter)
     output.test_results()

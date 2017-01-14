@@ -1,21 +1,21 @@
 {
-  "bandwidth" :{
+  "bandwidth" : {
     "download" : "4",
-    "upload" : "2"
+    "upload" : "1"
   },
-  "twitter" :{
-    "twitter_token" : "",
-    "twitter_consumer_key" : "",
-    "twitter_token_secret" : "",
-    "twitter_consumer_secrete": ""
+  "twitter" : {
+    "twitter_token" : "160442066-w0bB5xY...D3mDJhs90pnoW9wNkZdbVi",
+    "twitter_consumer_key" : "WvuU8Di2...f9X0ZjVH19kz",
+    "twitter_token_secret" : "sFhLSo5DH9w1He...ey63lFO9uuq2WbLNEqN5T",
+    "twitter_consumer_secret": "AieNTtYRF0Atuv...jUgmSYrHoSm7440Oqgt0lq4o"
   },
   "margin": ".7",
-  "isp": "@axxess",
-  "log":{
+  "isp": "@AxxessDSL",
+  "log": {
     "name": "sluggish-isp.log"
   },
   "driver": {
-    "type": "firefox",
-    "binary": "/usr/bin/firefox"
+    "type": "chrome",
+    "binary": "/usr/local/bin/chromedriver"
   }
 }
