@@ -3,7 +3,7 @@ Sluggish ISP
 Execute run speed tests and tweet about your ISP's degraded service.
 
 Details
-----
+---
 Python script uses selenium webdriver to scrap speedtest results and tweets them at configured ISP.
 
 Script result includes:
@@ -49,12 +49,10 @@ pip install -r requirements.txt --upgrade
 pyvenv-3.5 env
 source env/bin/activate
 ```
-
 * To execute script,
 ```
 python sluggish_isp.py
 ```
-
 * Deactivate virtual-environment
 ```
 deactivate
@@ -72,3 +70,7 @@ source env/bin/activate
 (info) Tweet: Hey @AxxessDSL, what gives! I pay for 4/1 Mbps. Why am I only getting 0.33/0.20 Mbps? (Size: 85 chars)
 (env)
 ```
+
+Links
+---
+[sliggish-isp](https://saumilp.github.io/sluggish-isp/)
