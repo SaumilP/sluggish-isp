@@ -19,7 +19,7 @@ Account tokens and secrets would have to be configured from [here](https://dev.t
 
 Twitter Handles:
 ---
-Configure whichever ISP you belong to, below are some of the twitter handles:
+Configure whichever ISP you belong to, below are some of the ZA ISP twitter handles:
 
 | ISP | Twitter Handle |  
 | --- | --- |   
