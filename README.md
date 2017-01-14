@@ -40,7 +40,10 @@ Setup and Execution
 ```
 pip install -r requirements.txt
 ```
-
+* (Optional) To upgrade packages
+```
+pip install -r requirements.txt --upgrade
+```
 * Define virtual environment and activate virtual-environment
 ```
 pyvenv-3.5 env
@@ -55,11 +58,6 @@ python sluggish_isp.py
 * Deactivate virtual-environment
 ```
 deactivate
-```
-
-* (Optional) To upgrade packages
-```
-pip install -r requirements.txt --upgrade
 ```
 
 Output
